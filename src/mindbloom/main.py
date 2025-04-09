@@ -1,21 +1,13 @@
 import os 
-from supabase import create_client, Client
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
+import numpy as np
 from mindbloom.stablity import emotion_stablity
+from mindbloom.focus import get_focus
+from mindbloom.motor_engagement import get_mortor_engagement
 
-# Load environment variables
-load_dotenv()
-url: str = os.getenv("SUPABASE_URL")
-key: str = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(url, key)
-
-# Example Supabase call (ensure this is not called on import in production)
-response = supabase.table("children").select("*").execute()
-print(response.data)
 
 sample_data = [
     [0.70, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05],
@@ -31,6 +23,23 @@ sample_data = [
 ]
 
 print(emotion_stablity(sample_data))
+def min_max_normalize(arr):
+    min_val = np.min(arr)
+    max_val = np.max(arr)
+    normalized = (arr - min_val) / (max_val - min_val + 1e-8)
+    return normalized
+
+
+# normalized
+speed = [0.5, 0.6, 0.7, 0.8, 0.9]
+range_ = [0.5, 0.6, 0.7, 0.8, 0.9]
+symmetrry = [0.5, 0.6, 0.7, 0.8, 0.9]
+# Get reaction time data
+print("Normalize")
+print(min_max_normalize(speed))
+
+print(get_focus(sample_data, speed, range_, symmetrry))
+print(get_mortor_engagement(speed, range_, symmetrry))
 # FastAPI setup
 app = FastAPI()
 app.add_middleware(
@@ -47,19 +56,28 @@ async def health_check():
     return {"status": "ok"}
 
 # Define payload structure
-class EmotionalState(BaseModel):
-    emotion: List[Dict[str, float]]  # e.g., [{"happy": 0.9}, {"sad": 0.1}]
-    pause_frequency: float
-    hand_movement_range: float
-    hand_movement_speed: float
-    completion_time: float
-
-    hard_level: int
-    level_abandonment_rate: float
-    retry_attempts: Optional[int] = None
-    # reaction_time = hand_movement_speed / hand_movement_range or completion_time 
+class EmotionInput(BaseModel):
+    emotion: List[List[float]]
+    speed: List[float]
+    ranges: List[float]
+    symmetry: List[float]
 
 # Emotion State Endpoint
 @app.post("/emotion_state")
-async def emotion_state(payload: EmotionalState):
-    return {"received": payload.dict()}
+async def emotion_state(payload: EmotionInput):
+    # Extract data from payload
+    emotion_data = payload.emotion
+    speed_data = payload.speed
+    range_data = payload.ranges
+    symmetry_data = payload.symmetry
+
+    # Process data using the imported functions
+    focus_score = get_focus(emotion_data, speed_data, range_data, symmetry_data)
+    motor_engagement_score = get_mortor_engagement(speed_data, range_data, symmetry_data)
+    emotion_stability_score = emotion_stablity(emotion_data)
+
+    return {
+        "focus_score": focus_score,
+        "motor_engagement_score": motor_engagement_score,
+        "emotion_stability_score": emotion_stability_score,
+    }

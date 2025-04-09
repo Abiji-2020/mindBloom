@@ -2,6 +2,7 @@ import numpy as np
 import skfuzzy as fuzz
 from skfuzzy import control as ctrl
 from mindbloom.pause_frequency import get_pause_frequency
+from mindbloom.reaction_time_ms import get_reaction_time_ms
 
 def define_five_mfs(var):
     var['very_low'] = fuzz.trimf(var.universe, [0.0, 0.0, 0.2])
@@ -47,7 +48,7 @@ def get_input_symmetry(symmetry):
 def get_reaction_data(speed, range_, symmetry):
     return np.array(list(zip(speed, range_, symmetry)))
 
-def get_focus(input_emotions):
+def get_focus(input_emotions, input_speed, input_range, input_symmetry):
     focus = ctrl.Antecedent(np.arange(0, 1.01, 0.01), 'focus')
     pause_frequency = ctrl.Antecedent(np.arange(0, 1.01, 0.01), 'pause_frequency')
     reaction_time = ctrl.Antecedent(np.arange(0, 1.01, 0.01), 'reaction_time_ms')
